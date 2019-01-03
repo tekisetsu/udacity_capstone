@@ -4,4 +4,10 @@
 build
 devel
 
+.idea/
+
+venv/
+
 profile.tmp
+
+2-requirements.txt

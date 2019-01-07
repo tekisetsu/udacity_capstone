@@ -53,11 +53,19 @@ pip install -r requirements.txt
 2. Make and run styx
 ```bash
 cd ros
-catkin_make
-source devel/setup.sh
+catkin_make &&
+source devel/setup.sh &&
 roslaunch launch/styx.launch
 ```
 3. Run the simulator
+
+<!--catkin_make && source devel/setup.sh && roslaunch launch/styx.launch -->
+
+## Red light detector
+
+### In the simulator
+
+Because there is nothing red but the red lights in the simulator, we can use open cv methods and count the number of red pixels in the camera's image to detect red lights. Indeed training a NN for red light detection in a simulator is really overkill. Deeplearning comes handy if we the red lights come under different light conditions, positions, form and also also types (e.g red light for going left or right)
 
 ### Real world testing
 1. Download [training bag](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/traffic_light_bag_file.zip) that was recorded on the Udacity self-driving car.

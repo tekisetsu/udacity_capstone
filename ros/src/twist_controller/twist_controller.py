@@ -11,9 +11,6 @@ ONE_MPH = 0.44704
 class Controller(object):
     def __init__(self, vehicle_mass, brake_deadband, decel_limit, accel_limit, wheel_radius,
                  wheel_base, steer_ratio, max_lat_accel, max_steer_angle):
-        # instanciate the yaw controller
-        self.yaw_controller = YawController(wheel_base, steer_ratio, 0.1, max_lat_accel, max_steer_angle)
-        self.acceleration_controller = PID(kp=0.3, ki=0.1, kd=0.1, mn=0., mx=0.2)
 
         # Because the current velocity is noisy we create a low pass filter
         tau = 0.5
@@ -29,6 +26,10 @@ class Controller(object):
 
         # state variable
         self.last_time = rospy.get_time()
+
+        # instanciate controllers
+        self.yaw_controller = YawController(wheel_base, steer_ratio, 0.1, max_lat_accel, max_steer_angle)
+        self.acceleration_controller = PID(kp=0.3, ki=0.1, kd=0.1, mn=self.decel_limit, mx=0.2)
 
     def control(self, bdw_enabled, linear_velocity, angular_velocity, current_velocity):
 
@@ -54,8 +55,14 @@ class Controller(object):
         throttle = acceleration
         brake = 0
 
+        # rospy.loginfo("----------------")
+        # rospy.loginfo("acceleration : {}".format(acceleration))
+        # rospy.loginfo("current_velocity : {}".format(current_velocity))
+        # rospy.loginfo("linear_velocity : {}".format(linear_velocity))
+        # rospy.loginfo("----------------")
+
         # hold the car at the same place (a = 1m.s-2)
-        if linear_velocity == 0 and current_velocity < 0.1:
+        if linear_velocity == 0. and current_velocity < 0.1:
             throttle = 0
             brake = 700  # value adjusted to Carla
 

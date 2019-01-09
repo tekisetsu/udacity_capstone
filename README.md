@@ -61,11 +61,83 @@ roslaunch launch/styx.launch
 
 <!--catkin_make && source devel/setup.sh && roslaunch launch/styx.launch -->
 
-## Red light detector
 
-### In the simulator
+
+
+## Red light detector simulation (code in traffic\_light_detection/simulation)
+
+
 
 Because there is nothing red but the red lights in the simulator, we can use open cv methods and count the number of red pixels in the camera's image to detect red lights. Indeed training a NN for red light detection in a simulator is really overkill. Deeplearning comes handy if we the red lights come under different light conditions, positions, form and also also types (e.g red light for going left or right)
+
+#### captured image
+
+![sim_original](report_resources/simulation_original_image.jpeg)
+
+
+#### Masked image
+
+![sim_masked](report_resources/simulation_masked_redlight.png)
+
+
+## Red light detector in real environment (code in traffic\_light_detection/real_ environment)
+
+
+We can take several approaches to solve this, let us list them in this section:
+
+- Using the ROS bag images, we can train a simple Neural network to detect the red light in the parking. We wouldn't do any processing to the data byt instead use an end to end NN. In order to do so we would have to manually label the images containing a red light. Our solution would therefore overfit the use case and would probably pass the test. This solution needs a lot of work since it requires us to manually label data
+-  Instead of labeling the data ourselves , we can use traffic light datasets. We will for example start with a neural network that performed well with the ROCO dataset. We will then train this neural network on the provided traffic light dataset and then use it on the bag images for validation. This solution requires less work than the first solution but requires training which take time 
+-  The last solution takes advantage of the fact that the ROCO dataset contains the traffic light class. We can therefore use a coco trained model to detect if the traffic light is present or not in the picture. If so, we take the box containing the traffic light and count the number of pixels in the first third the bounding box, the number of yellow pixels in the mid 2nd third of the bounding box ... This method doesn't require much work and can be quickly tested
+
+
+### Applying the 3rd solution (Results)
+
+#### green traffic light image after NN
+
+![green_1_boxed](report_resources/green_1_boxed.jpg)
+
+#### green traffic light image
+
+![green_1_tl](report_resources/green_1_traffic_light.jpg)
+
+#### green traffic light image analysis from http://mkweb.bcgsc.ca
+
+![green_ca](report_resources/color_analysis_green.png)
+
+#### green traffic light cropped and filtered
+
+  ![green_1_fl](report_resources/green_1_filtered.jpg) We managed to correctly classify the traffic light
+
+#### red traffic light image after NN
+
+![red_1_boxed](report_resources/red_1_boxed.jpg)
+
+#### red traffic light image
+
+![red_1_tl](report_resources/red_1_traffic_light.jpg)
+
+#### red traffic light image analysis from http://mkweb.bcgsc.ca
+
+![red_ca](report_resources/color_analysis_red.png)
+
+#### red traffic light cropped and filtered
+
+  ![red_1_fl](report_resources/red_1_filtered_red.jpg) We managed to correctly classify the traffic light
+  
+  
+## Waypoint updated Node
+
+![sim_original](report_resources/waypoint-updater-ros-graph.png)
+
+The node updates the speed and position of the the waypoints that we are going to follow based on the base waypoints, our original waypoints and the traffic light / obstacles
+
+
+## DBW Node
+
+![sim_original](report_resources/dbw-node-ros-graph.png)
+
+Using several controllers, this nodes updates the steering, break and throttle of the car. The acceleration is controled by a simple PID controller
+
 
 ### Real world testing
 1. Download [training bag](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/traffic_light_bag_file.zip) that was recorded on the Udacity self-driving car.

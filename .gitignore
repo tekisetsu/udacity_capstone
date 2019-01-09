@@ -14,4 +14,4 @@ testing/
 .ipynb_checkpoints
 collected_images
 /traffic_light_detection/real_environment/model/
-/ros/src/tl_detector/light_classification/model/
+/ros/src/tl_detector/light_classification/model

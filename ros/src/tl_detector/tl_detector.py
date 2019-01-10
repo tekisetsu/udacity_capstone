@@ -5,6 +5,7 @@ from geometry_msgs.msg import PoseStamped, Pose
 from styx_msgs.msg import Lane, TrafficLightArray, TrafficLight
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from light_classification.sim_tl_classifier import SimTLClassifier
 from light_classification.tl_classifier import TLClassifier
 
 import numpy as np
@@ -39,8 +40,7 @@ class TLDetector(object):
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
         self.count = 0
         self.state = None
-        # todo: subscribe
-        # sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -49,8 +49,13 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
+
+        # Gettting the adequate light classifier
+        if self.config["is_site"]:
+            self.light_classifier = TLClassifier()
+        else:
+            self.light_classifier = SimTLClassifier()
 
         self.state = TrafficLight.UNKNOWN
         self.last_state = TrafficLight.UNKNOWN
@@ -61,29 +66,6 @@ class TLDetector(object):
 
     def pose_cb(self, msg):
         self.pose = msg
-
-        # TODO: delete, this is just to test in a wooden PC
-        self.count += 1
-        if self.count % 10 == 0:
-            light_wp, state = self.process_traffic_lights()
-
-            '''
-            Publish upcoming red lights at camera frequency.
-            Each predicted state has to occur `STATE_COUNT_THRESHOLD` number
-            of times till we start using it. Otherwise the previous stable state is
-            used.
-            '''
-            if self.state != state:
-                self.state_count = 0
-                self.state = state
-            elif self.state_count >= STATE_COUNT_THRESHOLD:
-                self.last_state = self.state
-                light_wp = light_wp if state == TrafficLight.RED else -1
-                self.last_wp = light_wp
-                self.upcoming_red_light_pub.publish(Int32(light_wp))
-            else:
-                self.upcoming_red_light_pub.publish(Int32(self.last_wp))
-            self.state_count += 1
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
@@ -101,17 +83,6 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
-
-        # save the images
-        try:
-            # Convert your ROS Image message to OpenCV2
-            cv2_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        except CvBridgeError, e:
-            print(e)
-        else:
-            # saving the OpenCV2 image as a jpeg
-            current_timestamp = rospy.get_time()
-            cv2.imwrite('./collected_images/camera_image--{}.jpeg'.format(current_timestamp), cv2_img)
 
         light_wp, state = self.process_traffic_lights()
 
@@ -273,9 +244,7 @@ class TLDetector(object):
                 closest_waypoint_before_line_idx += closest_waypoint_ahead_of_car_idx
 
                 # rospy.logerr("light found, {}".format(self.get_light_state(light)))
-                # state = self.get_light_state(light)
-                # todo: remove the line below and replace it with line before when the classifier is loaded
-                state = light.state
+                state = self.get_light_state(light)
                 return closest_waypoint_before_line_idx, state
 
             return -1, TrafficLight.UNKNOWN

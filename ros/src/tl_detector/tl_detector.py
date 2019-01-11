@@ -5,7 +5,7 @@ from geometry_msgs.msg import PoseStamped, Pose
 from styx_msgs.msg import Lane, TrafficLightArray, TrafficLight
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from light_classification.tl_classifier import TLClassifier
+from light_classification.sim_tl_classifier import SimTLClassifier
 
 import numpy as np
 import tf
@@ -49,7 +49,7 @@ class TLDetector(object):
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
+        self.light_classifier = SimTLClassifier()
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -102,16 +102,6 @@ class TLDetector(object):
         self.has_image = True
         self.camera_image = msg
 
-        # save the images
-        try:
-            # Convert your ROS Image message to OpenCV2
-            cv2_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-        except CvBridgeError, e:
-            print(e)
-        else:
-            # saving the OpenCV2 image as a jpeg
-            current_timestamp = rospy.get_time()
-            cv2.imwrite('./collected_images/camera_image--{}.jpeg'.format(current_timestamp), cv2_img)
 
         light_wp, state = self.process_traffic_lights()
 
@@ -192,7 +182,7 @@ class TLDetector(object):
         :param front_waypoint:
         :return:
         """
-        light_min_distance = 60
+        light_min_distance = 100
         light_idx = None
         light_coords = None
 

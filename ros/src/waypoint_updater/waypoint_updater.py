@@ -37,6 +37,8 @@ class WaypointUpdater(object):
         self.waypoints_2d = None
         self.waypoints_tree = None
         self.traffic_light_index = -1
+        self.tl_seen_index = 99999
+        self.tl_stop_waypoints = []
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
@@ -48,7 +50,7 @@ class WaypointUpdater(object):
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(30)
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             if self.pose and self.base_waypoints:
                 # Get closest waypoint
@@ -60,41 +62,48 @@ class WaypointUpdater(object):
         lane = Lane()
         lane.header = self.base_waypoints.header
         furthest_index = closest_waypoint_idx + LOOKAHEAD_WPS
-        waypoints_ahead = self.base_waypoints.waypoints[closest_waypoint_idx:closest_waypoint_idx + LOOKAHEAD_WPS]
 
         if self.traffic_light_index == -1 or self.traffic_light_index >= furthest_index:
-            lane.waypoints = waypoints_ahead
+            lane.waypoints = self.base_waypoints.waypoints[closest_waypoint_idx:closest_waypoint_idx + LOOKAHEAD_WPS]
+            self.tl_seen_index = -1
         else:
-            traffic_light_ahead_index = self.traffic_light_index - closest_waypoint_idx
-            lane.waypoints = self.decelerate_waypoints(waypoints_ahead, traffic_light_ahead_index)
+            if self.tl_seen_index == -1:
+                self.tl_seen_index = closest_waypoint_idx - 1
+                self.tl_stop_waypoints = self.decelerate_waypoints(closest_waypoint_idx, self.traffic_light_index, furthest_index)
+                lane.waypoints = self.tl_stop_waypoints
+            else:
+                lane.waypoints = self.tl_stop_waypoints[closest_waypoint_idx - self.tl_seen_index + 1:]
+            # rospy.logerr("distance : {}".format(self.distance(self.base_waypoints.waypoints, closest_waypoint_idx, self.traffic_light_index)))
         return lane
 
-    def decelerate_waypoints(self, waypoints_ahead, traffic_light_ahead_index):
-        decelerated_waypoints = []
-        stop_index = traffic_light_ahead_index - 4 if traffic_light_ahead_index >= 4 else 0
+    def decelerate_waypoints(self, closest_waypoint_idx, traffic_light_index, furthest_index):
 
-        # get the distance over which we will decelerate
-        if stop_index != 0:
-            deceleration_distance = self.distance(waypoints_ahead, 0, stop_index)
-            deceleration_per_m = -self.get_waypoint_velocity(waypoints_ahead[0]) / deceleration_distance
-            initial_velocity = self.get_waypoint_velocity(waypoints_ahead[0])
-            for i, waypoint in enumerate(waypoints_ahead[:stop_index]):
+        decelerated_waypoints = []
+
+        stop_index = 0
+        stop_index_candidate = traffic_light_index - 3
+        while stop_index == 0:
+            if self.distance(self.base_waypoints.waypoints, stop_index_candidate, traffic_light_index) > 3.5 :
+                stop_index = stop_index_candidate
+            else:
+                stop_index_candidate -= 1
+
+        if closest_waypoint_idx < stop_index:
+            # get the distance over which we will decelerate
+            deceleration_distance = self.distance(self.base_waypoints.waypoints, self.tl_seen_index, stop_index)
+            initial_velocity = self.get_waypoint_velocity(self.base_waypoints.waypoints[self.tl_seen_index])
+            for i, waypoint in enumerate(self.base_waypoints.waypoints[closest_waypoint_idx:stop_index]):
                 new_waypoint = Waypoint()
                 new_waypoint.pose = waypoint.pose
-
-                if i == 0:
-                    dl = lambda a, b: math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
-                    distance = dl(self.pose.pose.position, waypoints_ahead[0].pose.pose.position)
-                else:
-                    distance = self.distance(waypoints_ahead, i, i+1)
-
-                point_velocity = min(self.get_waypoint_velocity(waypoint), initial_velocity + deceleration_per_m*distance)
+                distance = self.distance(self.base_waypoints.waypoints, closest_waypoint_idx+i, stop_index)
+                point_velocity = min(self.get_waypoint_velocity(waypoint), initial_velocity*distance/deceleration_distance)
                 new_waypoint.twist.twist.linear.x = point_velocity
+                new_waypoint.twist.twist.linear.y = 0.
                 decelerated_waypoints.append(new_waypoint)
 
-        for i in range(len(waypoints_ahead) - stop_index):
+        for i in range(stop_index, furthest_index):
             new_waypoint = Waypoint()
-            new_waypoint.pose = waypoints_ahead[i].pose
+            new_waypoint.pose = self.base_waypoints.waypoints[i].pose
             new_waypoint.twist.twist.linear.x = 0.
             new_waypoint.twist.twist.linear.y = 0.
             decelerated_waypoints.append(new_waypoint)

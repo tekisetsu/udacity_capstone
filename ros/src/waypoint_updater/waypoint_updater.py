@@ -50,7 +50,7 @@ class WaypointUpdater(object):
         self.loop()
 
     def loop(self):
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(3)
         while not rospy.is_shutdown():
             if self.pose and self.base_waypoints:
                 # Get closest waypoint
@@ -73,7 +73,13 @@ class WaypointUpdater(object):
                 lane.waypoints = self.tl_stop_waypoints
             else:
                 lane.waypoints = self.tl_stop_waypoints[closest_waypoint_idx - self.tl_seen_index + 1:]
+
+
+            # rospy.logerr("--------")
             # rospy.logerr("distance : {}".format(self.distance(self.base_waypoints.waypoints, closest_waypoint_idx, self.traffic_light_index)))
+            # rospy.logerr("asked speed : {}".format(lane.waypoints[0].twist.twist.linear.x))
+            # rospy.logerr("--------")
+
         return lane
 
     def decelerate_waypoints(self, closest_waypoint_idx, traffic_light_index, furthest_index):
@@ -83,10 +89,14 @@ class WaypointUpdater(object):
         stop_index = 0
         stop_index_candidate = traffic_light_index - 3
         while stop_index == 0:
-            if self.distance(self.base_waypoints.waypoints, stop_index_candidate, traffic_light_index) > 3.5 :
+            if self.distance(self.base_waypoints.waypoints, stop_index_candidate, traffic_light_index) > 3:
                 stop_index = stop_index_candidate
             else:
                 stop_index_candidate -= 1
+
+        # rospy.logerr("stop index: {},  traffic light index".format(stop_index, traffic_light_index))
+        # rospy.logerr("distance traffic light stop index: {}".format(
+        #     self.distance(self.base_waypoints.waypoints, stop_index_candidate, traffic_light_index)))
 
         if closest_waypoint_idx < stop_index:
             # get the distance over which we will decelerate
@@ -100,6 +110,10 @@ class WaypointUpdater(object):
                 new_waypoint.twist.twist.linear.x = point_velocity
                 new_waypoint.twist.twist.linear.y = 0.
                 decelerated_waypoints.append(new_waypoint)
+        #         rospy.logerr("********************")
+        #         rospy.logerr("index: {} , asked speed {}".format( closest_waypoint_idx + i , point_velocity))
+        #
+        # rospy.logerr("********************")
 
         for i in range(stop_index, furthest_index):
             new_waypoint = Waypoint()

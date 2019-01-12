@@ -13,7 +13,7 @@ class Controller(object):
                  wheel_base, steer_ratio, max_lat_accel, max_steer_angle):
 
         # Because the current velocity is noisy we create a low pass filter
-        tau = 0.5
+        tau = 0.1
         ts = 0.02
         self.velocity_lpf = LowPassFilter(tau, ts)
 
@@ -56,9 +56,9 @@ class Controller(object):
         brake = 0
 
         # rospy.loginfo("----------------")
-        # rospy.loginfo("acceleration : {}".format(acceleration))
-        # rospy.loginfo("current_velocity : {}".format(current_velocity))
-        # rospy.loginfo("linear_velocity : {}".format(linear_velocity))
+        # rospy.logerr("acceleration : {}".format(acceleration))
+        # rospy.logerr("current_velocity : {}".format(current_velocity))
+        # rospy.logerr("linear_velocity : {}".format(linear_velocity))
         # rospy.loginfo("----------------")
 
         # hold the car at the same place (a = 1m.s-2)

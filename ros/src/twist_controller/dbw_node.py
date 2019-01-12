@@ -85,7 +85,7 @@ class DBWNode(object):
         self.dbw_enabled = msg
 
     def loop(self):
-        rate = rospy.Rate(10)  # 50Hz
+        rate = rospy.Rate(5)  # 50Hz
         while not rospy.is_shutdown():
             # We don't compute anything if dbw is not enabled, indeed we don't want to accumulate the errors
             # in the integral and differential terms
